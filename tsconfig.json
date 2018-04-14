@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "outDir": "dist",
+    "sourceMap": true,
+    "lib": [
+      "esnext",
+      "esnext.asynciterable",
+      "dom"
+    ],
+  },
+  "files": [
+    "./node_modules/@types/node/index.d.ts"
+  ],
+  "include": [
+    "src/**/*.ts",
+    "node_modules/backend-utilities/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ]
+}
