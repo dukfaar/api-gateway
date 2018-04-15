@@ -10,6 +10,9 @@ ENV PORT=$PORT
 
 EXPOSE 3000
 
+RUN apk add --update git 
+RUN rm -rf /var/cache/apk/*
+
 COPY package*.json ./
 RUN npm install --production
 
