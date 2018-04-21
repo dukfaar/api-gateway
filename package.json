@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "tsc": "tsc",
-    "start": "node dist/src",
+    "start": "node dist",
     "test": "mocha -r ts-node/register src/**/*.test.ts",
     "local-dev": "npm run build && npm start"
   },

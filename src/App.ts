@@ -7,6 +7,7 @@ import * as graphqlHTTP from 'express-graphql'
 export class App {
   expressApp
   port = process.env.PORT || 3000
+  schema
 
   constructor() {
     this.expressApp = express()
@@ -29,11 +30,15 @@ export class App {
   async start() {
     await this.loadRoutes()
 
+    setInterval(async () =>  {
+      this.schema = await getSchema()
+    }, 60000)
+
     this.listen()
   }
 
   async loadRoutes() {
-    const schema = await getSchema()
+    this.schema = await getSchema()
 
     this.expressApp.use('/', (req, res, next) => {
       //TODO: add authentication middleware here
@@ -41,7 +46,7 @@ export class App {
 			next()
 		},
 			graphqlHTTP(req => ({
-				schema: schema,
+				schema: this.schema,
 				graphiql: true //Set to false if you don't want graphiql enabled,
 			}))
 		)
