@@ -16,6 +16,7 @@ const createRemoteSchema = async (uri: string): Promise<GraphQLSchema> => {
 
     return makeRemoteExecutableSchema({schema, link})
   } catch(exception) {
+    console.log('fetching schema from ' + uri + 'failed')
     return null
   }
 }
