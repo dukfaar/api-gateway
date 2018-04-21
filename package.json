@@ -34,7 +34,7 @@
     "node-fetch": "latest",
     "typescript": "^2.7.1",
     "ts-node": "latest",
-    "backend-utilities": "github:dukfaar/backend-utilities"
+    "backend-utilities": "latest"
   },
   "devDependencies": {
     "@types/mocha": "latest",
