@@ -1,24 +1,17 @@
-import { makeExecutableSchema, 
-  makeRemoteExecutableSchema, mergeSchemas, introspectSchema 
-} from 'graphql-tools'
+import { makeExecutableSchema, mergeSchemas } from 'graphql-tools'
 
-import { HttpLink } from 'apollo-link-http'
+import { ApolloLink } from 'apollo-link'
+
 import fetch from 'node-fetch'
 
 import * as _ from 'lodash'
 
 import { GraphQLSchema } from 'graphql'
 
-const createRemoteSchema = async (uri: string): Promise<GraphQLSchema> => {
-  const link = new HttpLink({uri, fetch})
-  try {
-    const schema = await introspectSchema(link)
+import createRemoteLink from './createRemoteLink'
+import createRemoteSchema from './createRemoteSchema'
 
-    return makeRemoteExecutableSchema({schema, link})
-  } catch(exception) {
-    return null
-  }
-}
+import getAuthBackendLink from './authBackendLink'
 
 export const getSchema = async () => {
   const itemNamespaceLink = `
@@ -26,25 +19,22 @@ export const getSchema = async () => {
     extend type Namespace { items: [Item] }
   `
 
-  let remoteUris = [
-    process.env.ITEM_BACKEND_URL || "http://localhost:3000", 
-    process.env.NAMESPACE_BACKEND_URL || "http://localhost:3001"
-  ]
+  let itemBackendLink = createRemoteLink(process.env.ITEM_BACKEND_URL || "http://localhost:3000")
+  let namespaceBackendLink = createRemoteLink(process.env.NAMESPACE_BACKEND_URL || "http://localhost:3001")
+ 
+  let urlString = _.trim(process.env.GRAPHQL_URLS)
+  let remoteGraphQLUris = (urlString.length > 0) ? _.split(urlString, ',') : []
 
-  if(_.trim(process.env.GRAPHQL_URLS).length > 0) {
-    const unnamedServices = _.split(_.trim(process.env.GRAPHQL_URLS) || "", ',')
-
-    remoteUris = _.concat(remoteUris, unnamedServices)
-  }
+  let remoteGraphQLLinks = remoteGraphQLUris.map(createRemoteLink)
 
   return Promise.all(
-    remoteUris.map(createRemoteSchema)
+    [itemBackendLink, namespaceBackendLink, getAuthBackendLink(), ...remoteGraphQLLinks].map(createRemoteSchema)
   ).then(remoteSchemas => {   
     let schemas:(GraphQLSchema|string)[] = [..._.filter(remoteSchemas, schema => schema)]
 
     let resolversDefinition = { }
 
-    const [itemBackendSchema, namespaceBackendSchema] = remoteSchemas
+    const [itemBackendSchema, namespaceBackendSchema, authBackendSchema] = remoteSchemas
     
     if(itemBackendSchema && namespaceBackendSchema) {
       schemas.push(itemNamespaceLink)

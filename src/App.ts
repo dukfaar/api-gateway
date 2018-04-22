@@ -1,5 +1,6 @@
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
+import * as cookieParser from 'cookie-parser'
 
 import { getSchema } from './graphql/schema'
 import * as graphqlHTTP from 'express-graphql'
@@ -12,6 +13,7 @@ export class App {
   constructor() {
     this.expressApp = express()
 
+    this.expressApp.use(cookieParser())
     this.expressApp.use(bodyParser.json())
 		this.expressApp.use(bodyParser.urlencoded({extended: false}))	
 		
