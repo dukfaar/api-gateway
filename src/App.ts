@@ -34,7 +34,7 @@ export class App {
 
     setInterval(async () =>  {
       this.schema = await getSchema()
-    }, 60000)
+    }, process.env.SCHEMA_REFRESH_INTERVAL || 60000)
 
     this.listen()
   }
