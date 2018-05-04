@@ -1,17 +1,24 @@
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as cookieParser from 'cookie-parser'
+import { createServer } from 'http'
 
 import { getSchema } from './graphql/schema'
-import * as graphqlHTTP from 'express-graphql'
+import {graphqlExpress, graphiqlExpress} from 'graphql-server-express'
+import { SubscriptionClient } from 'subscriptions-transport-ws/dist/client'
+
+import { execute, subscribe } from 'graphql'
+import { SubscriptionServer } from 'subscriptions-transport-ws'
 
 export class App {
-  expressApp
-  port = process.env.PORT || 3000
-  schema
+  private expressApp
+  private expressServer
+  private port = process.env.PORT || 3000
+  private schema
 
   constructor() {
     this.expressApp = express()
+    this.expressServer = createServer(this.expressApp)
 
     this.expressApp.use(cookieParser())
     this.expressApp.use(bodyParser.json())
@@ -41,23 +48,43 @@ export class App {
 
   async loadRoutes() {
     this.schema = await getSchema()
-
-    this.expressApp.use('/', (req, res, next) => {
+  
+    this.expressApp.get('/graphiql', (req, res, next) => {
       //TODO: add authentication middleware here
 
 			next()
-		},
-			graphqlHTTP(req => ({
-				schema: this.schema,
-				graphiql: true //Set to false if you don't want graphiql enabled,
-			}))
-		)
+    },
+    graphiqlExpress({
+      endpointURL: '/',
+      subscriptionsEndpoint: `ws://localhost:${this.port}/subscriptions`
+    })
+    )
+    
+    this.expressApp.post('/', (req, res, next) => {
+      //TODO: add authentication middleware here
+
+			next()
+    },
+    graphqlExpress(req => {
+      return {
+        schema: this.schema,
+        context: req
+      }
+    })
+    )
   }
 
   listen() {
-    this.expressApp.listen(this.port, (err) => {
-			if (err) throw err
+    this.expressServer.listen(this.port, (err) => {
+      if (err) throw err
 
+      new SubscriptionServer({
+        execute, subscribe, schema: this.schema
+      }, {
+        server: this.expressServer,
+        path: '/subscriptions'
+      })
+      
 			return console.log(`server is listening on ${this.port}`)
 		})
   }
