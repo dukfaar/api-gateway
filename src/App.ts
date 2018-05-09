@@ -57,7 +57,7 @@ export class App {
 			next()
     },
     graphiqlExpress({
-      endpointURL: '/',
+      endpointURL: `ws://localhost:${this.port}/subscriptions`,
       subscriptionsEndpoint: `ws://localhost:${this.port}/subscriptions`
     })
     )
