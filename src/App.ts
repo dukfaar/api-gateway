@@ -1,6 +1,8 @@
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as cookieParser from 'cookie-parser'
+import * as cookie from 'cookie'
+
 import { createServer } from 'http'
 
 import { getSchema } from './graphql/schema'
@@ -68,7 +70,10 @@ export class App {
     graphqlExpress(req => {
       return {
         schema: this.schema,
-        context: req
+        context: {
+          ...req,
+          Authorization: req.cookies.Authorization
+        }
       }
     })
     )
@@ -79,7 +84,19 @@ export class App {
       if (err) throw err
 
       new SubscriptionServer({
-        execute, subscribe, schema: this.schema
+        execute, subscribe, schema: this.schema,
+        onConnect: (connectionParams, webSocket, context) => {
+          const request = context.request
+          const headers = request && request.headers
+          const cookies = headers && headers.cookie && cookie.parse(headers.cookie)
+
+          let authCookie = cookies && cookies.Authorization
+          let authValue = authCookie
+
+          return {
+            Authorization: authValue
+          }
+        }
       }, {
         server: this.expressServer,
         path: '/subscriptions'

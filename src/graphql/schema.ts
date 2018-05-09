@@ -10,7 +10,6 @@ import { GraphQLSchema } from 'graphql'
 
 import * as ws from 'ws'
 
-import createRemoteLink from './createRemoteLink'
 import createRemoteHttpLink from './createRemoteHttpLink'
 import createRemoteSchema from './createRemoteSchema'
 
@@ -24,13 +23,13 @@ export const getSchema = async () => {
     extend type Namespace { items: [Item] }
   `
 
-  let itemBackendLink = createRemoteLink(createRemoteHttpLink(process.env.ITEM_BACKEND_URL || "http://localhost:3000"), null)
-  let namespaceBackendLink = createRemoteLink(createRemoteHttpLink(process.env.NAMESPACE_BACKEND_URL || "http://localhost:3001"), null)
+  let itemBackendLink = createRemoteHttpLink(process.env.ITEM_BACKEND_URL || "http://localhost:3000")
+  let namespaceBackendLink = createRemoteHttpLink(process.env.NAMESPACE_BACKEND_URL || "http://localhost:3001")
  
   let urlString = _.trim(process.env.GRAPHQL_URLS)
   let remoteGraphQLUris = (urlString.length > 0) ? _.split(urlString, ',') : []
 
-  let remoteGraphQLLinks = remoteGraphQLUris.map(createRemoteHttpLink).map(httpLink => createRemoteLink(httpLink, null))
+  let remoteGraphQLLinks = remoteGraphQLUris.map(createRemoteHttpLink).map(httpLink => httpLink)
 
   return Promise.all(
     [
