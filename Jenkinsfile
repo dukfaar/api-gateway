@@ -21,7 +21,9 @@ node {
     if(env.BRANCH_NAME == 'master') {
         stage('Docker Build') {
             docker.build('dukfaar/api-gateway')
+        }
 
+        stage('Update Service') {
             sh 'docker service update api-gateway_api-gateway'
         }
     }
