@@ -24,7 +24,7 @@ node {
         }
 
         stage('Update Service') {
-            sh 'docker service update api-gateway_api-gateway'
+            sh 'docker service update --force api-gateway_api-gateway'
         }
     }
 }
