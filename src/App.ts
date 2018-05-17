@@ -2,11 +2,12 @@ import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as cookieParser from 'cookie-parser'
 import * as cookie from 'cookie'
+import * as url from 'url'
 
 import { createServer } from 'http'
 
 import { getSchema } from './graphql/schema'
-import {graphqlExpress, graphiqlExpress} from 'graphql-server-express'
+import { graphqlExpress, graphiqlExpress } from 'graphql-server-express'
 import { SubscriptionClient } from 'subscriptions-transport-ws/dist/client'
 
 import { execute, subscribe } from 'graphql'
@@ -24,24 +25,24 @@ export class App {
 
     this.expressApp.use(cookieParser())
     this.expressApp.use(bodyParser.json())
-		this.expressApp.use(bodyParser.urlencoded({extended: false}))	
-		
-		this.expressApp.use('*', (req, res, next) => {
-			res.header('Access-Control-Allow-Origin', '*')
-			res.header('Access-Control-Allow-Credentials', true)
-			res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT')
-			res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
-			res.header('Access-Control-Max-Age', '600')
-			next()
+    this.expressApp.use(bodyParser.urlencoded({ extended: false }))
+
+    this.expressApp.use('*', (req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*')
+      res.header('Access-Control-Allow-Credentials', true)
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT')
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
+      res.header('Access-Control-Max-Age', '600')
+      next()
     })
-    
+
     this.expressApp.options('*', (req, res) => { res.send('OK') })
   }
 
   async start() {
     await this.loadRoutes()
 
-    setInterval(async () =>  {
+    setInterval(async () => {
       this.schema = await getSchema()
     }, process.env.SCHEMA_REFRESH_INTERVAL || 60000)
 
@@ -50,32 +51,32 @@ export class App {
 
   async loadRoutes() {
     this.schema = await getSchema()
-  
-    this.expressApp.get('/graphiql', (req, res, next) => {
-      //TODO: add authentication middleware here
 
-			next()
-    },
-    graphiqlExpress({
-      endpointURL: `ws://localhost:${this.port}/subscriptions`,
-      subscriptionsEndpoint: `ws://localhost:${this.port}/subscriptions`
-    })
+    this.expressApp.get('/graphiql',
+      graphiqlExpress(req => ({
+        endpointURL: '/',
+        subscriptionsEndpoint: url.format({
+          host: req.get('host'),
+          protocol: req.protocol === 'https' ? 'wss' : 'ws',
+          pathname: '/subscriptions'
+        })
+      }))
     )
-    
+
     this.expressApp.post('/', (req, res, next) => {
       //TODO: add authentication middleware here
 
-			next()
+      next()
     },
-    graphqlExpress(req => {
-      return {
-        schema: this.schema,
-        context: {
-          ...req,
-          Authorization: req.cookies.Authorization
+      graphqlExpress(req => {
+        return {
+          schema: this.schema,
+          context: {
+            ...req,
+            Authorization: req.cookies.Authorization
+          }
         }
-      }
-    })
+      })
     )
   }
 
@@ -98,11 +99,11 @@ export class App {
           }
         }
       }, {
-        server: this.expressServer,
-        path: '/subscriptions'
-      })
-      
-			return console.log(`server is listening on ${this.port}`)
-		})
+          server: this.expressServer,
+          path: '/subscriptions'
+        })
+
+      return console.log(`server is listening on ${this.port}`)
+    })
   }
 }
