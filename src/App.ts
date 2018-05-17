@@ -57,7 +57,7 @@ export class App {
         endpointURL: '/',
         subscriptionsEndpoint: url.format({
           host: req.get('host'),
-          protocol: 'wss',
+          protocol: process.env.GRAPHIQL_PROTOCOL || 'ws',
           pathname: '/subscriptions'
         })
       }))
