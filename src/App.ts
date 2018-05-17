@@ -57,7 +57,7 @@ export class App {
         endpointURL: '/',
         subscriptionsEndpoint: url.format({
           host: req.get('host'),
-          protocol: req.protocol === 'https' ? 'wss' : 'ws',
+          protocol: 'wss',
           pathname: '/subscriptions'
         })
       }))
