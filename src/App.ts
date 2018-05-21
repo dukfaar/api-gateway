@@ -3,21 +3,24 @@ import * as bodyParser from 'body-parser'
 import * as cookieParser from 'cookie-parser'
 import * as cookie from 'cookie'
 import * as url from 'url'
+import * as _ from 'lodash'
+
+import { filter } from 'rxjs/operators'
 
 import { createServer } from 'http'
 
-import { getSchema } from './graphql/schema'
 import { graphqlExpress, graphiqlExpress } from 'graphql-server-express'
 import { SubscriptionClient } from 'subscriptions-transport-ws/dist/client'
 
 import { execute, subscribe } from 'graphql'
 import { SubscriptionServer } from 'subscriptions-transport-ws'
 
+import { schemaSubject } from './graphql/schema'
+
 export class App {
   private expressApp
   private expressServer
   private port = process.env.PORT || 3000
-  private schema
 
   constructor() {
     this.expressApp = express()
@@ -42,16 +45,10 @@ export class App {
   async start() {
     await this.loadRoutes()
 
-    setInterval(async () => {
-      this.schema = await getSchema()
-    }, process.env.SCHEMA_REFRESH_INTERVAL || 60000)
-
     this.listen()
   }
 
   async loadRoutes() {
-    this.schema = await getSchema()
-
     this.expressApp.get('/graphiql',
       graphiqlExpress(req => ({
         endpointURL: '/',
@@ -70,7 +67,7 @@ export class App {
     },
       graphqlExpress(req => {
         return {
-          schema: this.schema,
+          schema: schemaSubject.getValue(),
           context: {
             ...req,
             Authorization: req.cookies.Authorization
@@ -84,24 +81,34 @@ export class App {
     this.expressServer.listen(this.port, (err) => {
       if (err) throw err
 
-      new SubscriptionServer({
-        execute, subscribe, schema: this.schema,
-        onConnect: (connectionParams, webSocket, context) => {
-          const request = context.request
-          const headers = request && request.headers
-          const cookies = headers && headers.cookie && cookie.parse(headers.cookie)
+      let subscriptionServer
 
-          let authCookie = cookies && cookies.Authorization
-          let authValue = authCookie
-
-          return {
-            Authorization: authValue
+      schemaSubject.pipe(filter(schema => !_.isNull(schema)))
+      .subscribe(schema => {
+        if(!schema) return
+        if(subscriptionServer) subscriptionServer.close()
+        subscriptionServer = new SubscriptionServer({
+          execute, subscribe, schema,
+          onConnect: (connectionParams, webSocket, context) => {
+            const request = context.request
+            const headers = request && request.headers
+            const cookies = headers && headers.cookie && cookie.parse(headers.cookie)
+  
+            let authCookie = cookies && cookies.Authorization
+            let authValue = authCookie
+  
+            return {
+              Authorization: authValue
+            }
           }
-        }
-      }, {
-          server: this.expressServer,
-          path: '/subscriptions'
-        })
+        }, {
+            server: this.expressServer,
+            path: '/subscriptions'
+          }
+        )
+      })
+
+      
 
       return console.log(`server is listening on ${this.port}`)
     })

@@ -1,4 +1,5 @@
-import { makeExecutableSchema, mergeSchemas } from 'graphql-tools'
+import { GraphQLSchema } from 'graphql'
+import { makeExecutableSchema } from 'graphql-tools'
 
 import { ApolloLink } from 'apollo-link'
 
@@ -6,76 +7,50 @@ import fetch from 'node-fetch'
 
 import * as _ from 'lodash'
 
-import { GraphQLSchema } from 'graphql'
-
 import * as ws from 'ws'
+import { BehaviorSubject } from 'rxjs'
 
 import createRemoteHttpLink from './createRemoteHttpLink'
 import createRemoteSchema from './createRemoteSchema'
-
-import getAuthBackendLink from './authBackendLink'
+import createRemoteWsLink from './createRemoteWsLink'
 
 import { pubsub } from '../pubsub'
 
-export const getSchema = async () => {
-  const itemNamespaceLink = `
-    extend type Item { namespace: Namespace }
-    extend type Namespace { items: [Item] }
-  `
+import remoteSchemaSubject from './remoteSchemaSubject'
+import schemaSubject from './schemaSubject'
 
-  let itemBackendLink = createRemoteHttpLink(process.env.ITEM_BACKEND_URL || "http://localhost:3000")
-  let namespaceBackendLink = createRemoteHttpLink(process.env.NAMESPACE_BACKEND_URL || "http://localhost:3001")
- 
-  let urlString = _.trim(process.env.GRAPHQL_URLS)
-  let remoteGraphQLUris = (urlString.length > 0) ? _.split(urlString, ',') : []
+import createCombinedSchemas from './createCombinedSchemas'
 
-  let remoteGraphQLLinks = remoteGraphQLUris.map(createRemoteHttpLink).map(httpLink => httpLink)
+remoteSchemaSubject.subscribe(createCombinedSchemas)
 
-  return Promise.all(
-    [
-      itemBackendLink, 
-      namespaceBackendLink, 
-      getAuthBackendLink(),
-      ...remoteGraphQLLinks,
-    ].map(createRemoteSchema)
-  ).then(remoteSchemas => {
-    let schemas: Array<GraphQLSchema|string> = []
+const itemBackendLink = createRemoteWsLink(
+  process.env.ITEM_BACKEND_WS || "ws://localhost:3000/subscriptions",
+  () => fetchRemoteSchema(itemBackendLink, 0)
+)
+
+const namespaceBackendLink = createRemoteWsLink(
+  process.env.NAMESPACE_BACKEND_WS || "ws://localhost:3001/subscriptions",
+  () => fetchRemoteSchema(namespaceBackendLink, 1)
+)
+
+const authBackendLink = createRemoteWsLink(
+  process.env.AUTH_BACKEND_WS || "ws://localhost:3002/subscriptions",
+  () => fetchRemoteSchema(authBackendLink, 2)
+)
+
+function fetchRemoteSchema(link: ApolloLink, index: number) {
+  return createRemoteSchema(link)
+  .then(newSchema => {
+    let remoteSchemas = remoteSchemaSubject.getValue()
+    let oldSchema = remoteSchemas[index]
     
-    _.forEach(remoteSchemas, schema => {
-      if(schema) schemas.push(schema)
-    })
-
-    let resolversDefinition = { }
-
-    const [itemBackendSchema, namespaceBackendSchema, authBackendSchema] = remoteSchemas
-    
-    if(itemBackendSchema && namespaceBackendSchema) {
-      schemas.push(itemNamespaceLink)
-    }
-
-    return mergeSchemas({
-      schemas: schemas,
-      resolvers: mergeInfo => {
-        let resolvers:any = {}
-
-        if(itemBackendSchema && namespaceBackendSchema) {
-          _.assign(resolvers, {
-            Item: {
-              namespace: {
-                fragment: 'fragment ItemFragment on Item { namespaceId }',
-                resolve: (parent, params, context, info) => {
-                  return mergeInfo.delegate('query', 'namespace', {id: parent.namespaceId}, context, info)
-                }
-              }
-            }
-          })
-        }
-
-        return resolvers
-      }
-    })
+    if(oldSchema != newSchema) {
+      remoteSchemas[index] = newSchema
+      remoteSchemaSubject.next(remoteSchemas)
+    }  
   })
-  .catch(error => {   
-    console.error('Got an error while building the schema: ' + error)
-  })
+}
+
+export {
+  schemaSubject
 }

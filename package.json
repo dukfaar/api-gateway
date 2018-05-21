@@ -8,7 +8,8 @@
     "tsc": "tsc",
     "start": "node dist",
     "test": "mocha -r ts-node/register src/**/*.test.ts",
-    "local-dev": "npm run build && npm start"
+    "dev": "cross-env NODE_ENV=development PORT=9000 AUTH_BACKEND_WS=ws://localhost:3002/subscriptions npm run start-dev",
+    "start-dev": "tsc && npm start"
   },
   "repository": {
     "type": "git",
@@ -21,9 +22,9 @@
   },
   "homepage": "https://github.com/dukfaar/api-gateway#readme",
   "dependencies": {
-    "@types/ioredis": "^3.2.7",
+    "@types/ioredis": "^3.2.8",
     "@types/lodash": "^4.14.108",
-    "@types/node": "^9.4.2",
+    "@types/node": "^9.6.17",
     "apollo-client-preset": "^1.0.8",
     "apollo-link": "^1.2.2",
     "apollo-link-context": "^1.0.8",
@@ -31,7 +32,7 @@
     "apollo-link-ws": "^1.0.8",
     "backend-utilities": "^1.3.2",
     "bluebird": "^3.5.1",
-    "body-parser": "^1.18.2",
+    "body-parser": "^1.18.3",
     "cookie": "^0.3.1",
     "cookie-parser": "^1.4.3",
     "express": "^4.16.3",
@@ -41,16 +42,18 @@
     "graphql-server-express": "^1.3.6",
     "graphql-tools": "^2.24.0",
     "ioredis": "^3.2.2",
-    "lodash": "^4.17.5",
+    "lodash": "^4.17.10",
     "node-fetch": "^2.1.2",
-    "subscriptions-transport-ws": "^0.9.8",
-    "ts-node": "^6.0.0",
-    "typescript": "^2.7.1",
+    "rxjs": "^6.1.0",
+    "subscriptions-transport-ws": "^0.9.9",
+    "ts-node": "^6.0.3",
+    "typescript": "^2.8.3",
     "ws": "^5.1.1"
   },
   "devDependencies": {
-    "@types/mocha": "latest",
-    "mocha": "latest",
-    "chai": "latest"
+    "@types/mocha": "^5.2.0",
+    "mocha": "^5.1.1",
+    "chai": "^4.1.2",
+    "cross-env": "^5.1.5"
   }
 }
